@@ -4,9 +4,12 @@ use gtk4::{self as gtk, gio, glib, prelude::*};
 use std::{
     ffi::{CStr, c_char, c_void},
     rc::Rc,
+    sync::Arc,
 };
 
 type Pointer = *mut c_void;
+type Services = (Rc<Api>, Arc<crate::login::Accounts>);
+
 type Handler = unsafe extern "C" fn(Pointer, Pointer);
 
 #[link(name = "webkitgtk-6.0")]
@@ -85,7 +88,7 @@ async fn read_body(stream: Option<gio::InputStream>) -> Result<Vec<u8>, &'static
 }
 
 unsafe extern "C" fn request_handler(request: Pointer, data: Pointer) {
-    let (request, address, method, body, api) = unsafe {
+    let (request, address, method, body, api, accounts) = unsafe {
         let address = CStr::from_ptr(webkit_uri_scheme_request_get_uri(request))
             .to_string_lossy()
             .into_owned();
@@ -100,7 +103,8 @@ unsafe extern "C" fn request_handler(request: Pointer, data: Pointer) {
             address,
             method,
             body,
-            (&*data.cast::<Rc<Api>>()).clone(),
+            (&*data.cast::<Services>()).0.clone(),
+            (&*data.cast::<Services>()).1.clone(),
         )
     };
     let Some(route) = address.strip_prefix("makers3d://app") else {
@@ -136,6 +140,52 @@ unsafe extern "C" fn request_handler(request: Pointer, data: Pointer) {
             let path = path.to_owned();
             glib::spawn_future_local(async move {
                 let (status, result) = match read_body(body).await {
+                    Ok(body)
+                        if matches!(
+                            path.as_str(),
+                            "/api/chat"
+                                | "/api/chat/account"
+                                | "/api/chat/models"
+                                | "/api/chat/agents"
+                        ) =>
+                    {
+                        let context_request = method == "POST" && path == "/api/chat";
+                        let context = context_request.then(|| api.chat_context());
+                        let progress = if context_request {
+                            api.start_chat_progress(&body)
+                        } else {
+                            None
+                        };
+                        let publish = move |delta: &str| {
+                            if let Some(progress) = &progress
+                                && let Ok(mut text) = progress.lock()
+                            {
+                                text.push_str(delta);
+                            }
+                        };
+                        let (status, result) =
+                            gio::spawn_blocking(move || match (method.as_str(), path.as_str()) {
+                                ("POST", "/api/chat") => {
+                                    crate::chat::dispatch(&accounts, &body, context, &publish)
+                                }
+                                ("GET", "/api/chat/agents") => (200, crate::agents::installed()),
+                                ("GET", "/api/chat/models") => accounts.models(),
+                                (_, "/api/chat/account") => accounts.dispatch(&method, &body),
+                                _ => (405, serde_json::json!({"error": "Método inválido."})),
+                            })
+                            .await
+                            .unwrap_or_else(|_| {
+                                (
+                                    500,
+                                    serde_json::json!({"error": "Falha ao executar o chat."}),
+                                )
+                            });
+                        if status == 200 && context_request {
+                            api.stage_chat_result(result)
+                        } else {
+                            (status, result)
+                        }
+                    }
                     Ok(body) => api.dispatch(&method, &path, query.as_deref(), &body),
                     Err(error) => (400, serde_json::json!({"error": error})),
                 };
@@ -152,7 +202,7 @@ unsafe extern "C" fn request_handler(request: Pointer, data: Pointer) {
 }
 
 unsafe extern "C" fn drop_api(data: Pointer) {
-    drop(unsafe { Box::from_raw(data.cast::<Rc<Api>>()) });
+    drop(unsafe { Box::from_raw(data.cast::<Services>()) });
 }
 
 pub fn view(api: Api) -> gtk::Widget {
@@ -165,7 +215,11 @@ pub fn view(api: Api) -> gtk::Widget {
             context,
             c"makers3d".as_ptr(),
             request_handler,
-            Box::into_raw(Box::new(Rc::new(api))).cast(),
+            Box::into_raw(Box::new((
+                Rc::new(api),
+                Arc::new(crate::login::Accounts::default()),
+            )))
+            .cast(),
             drop_api,
         );
         let widget = gtk::Widget::from_glib_none(webkit_web_view_new());

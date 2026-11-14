@@ -451,7 +451,7 @@ export function HistoryPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="border-gold/30 text-gold hover:bg-gold/10 hover:border-gold/40 relative z-10"
+                              className="border-gold/30 text-gold hover:bg-gold/10 hover:text-gold hover:border-gold/40 relative z-10"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 router.push(`/dashboard/impressao3d/historico/${b.id}/editar`);

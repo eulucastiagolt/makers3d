@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>{{TITLE}} · Makers 3D</title>
+<style>
+:root { color: #f5f2ea; background: #0b0b0b; font-family: "DM Sans", system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(ellipse at 50% 15%, #241d10, transparent 62%); }
+main { width: min(100%, 480px); overflow: hidden; background: #141413; border: 1px solid #302b20; border-radius: 22px; box-shadow: 0 24px 72px #0009; }
+header { padding: 22px 32px; color: #edbc4b; font-size: 1rem; font-weight: 750; border-bottom: 1px solid #28251e; }
+section { padding: 32px; }
+.status { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 15px; background: #332917; color: #edbc4b; font-size: 26px; font-weight: 700; }
+.status.failed { background: #372020; color: #ffadad; }
+h1 { margin: 20px 0 10px; font-size: clamp(1.5rem, 5vw, 2rem); line-height: 1.15; letter-spacing: -.03em; }
+p { margin: 0; color: #cac5b9; line-height: 1.55; }
+footer { padding: 16px 32px; border-top: 1px solid #28251e; color: #d5cab0; font-size: .875rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>Makers 3D</header>
+  <section>
+    <div class="status {{CLASS}}" aria-hidden="true">{{ICON}}</div>
+    <h1>{{TITLE}}</h1>
+    <p>{{DESCRIPTION}}</p>
+  </section>
+  <footer>Você pode fechar esta aba.</footer>
+</main>
+</body>
+</html>

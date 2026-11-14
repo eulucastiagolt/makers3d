@@ -34,6 +34,7 @@ jobs:
           version=$(awk -F '"' '/^version = / {print $2; exit}' Cargo.toml)
           test "$GITHUB_REF_NAME" = "v$version"
           make check
+          cargo test --locked
       - name: Build packages
         env:
           APPIMAGE_EXTRACT_AND_RUN: '1'

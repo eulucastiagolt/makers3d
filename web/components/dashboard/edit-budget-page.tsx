@@ -1,9 +1,11 @@
+import { PrintDuration } from './print-duration';
+import { PrintProfiles, usePrintProfiles } from './print-profiles';
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter, useParams } from '@/lib/navigation';
 import {
-  Package, Zap, Cpu, Wrench, AlertTriangle,
+  Package, AlertTriangle,
   Clock, TrendingUp, DollarSign, Loader2, Info, ArrowLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -126,6 +128,10 @@ export function EditBudgetPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const catalogue = usePrintProfiles();
+  const [printerId, setPrinterId] = useState('');
+  const [filamentId, setFilamentId] = useState('');
+
 
   useEffect(() => {
     if (!budgetId) return;
@@ -172,7 +178,7 @@ export function EditBudgetPage() {
   const fmt = (v: number) => `R$ ${(v ?? 0).toFixed(2).replace('.', ',')}`;
 
   const handleSave = async () => {
-    if (!budget || !inputs) return;
+    if (!budget || !inputs || !result) return;
     if (!budgetName.trim()) {
       toast.error('Dê um nome ao orçamento');
       return;
@@ -185,6 +191,8 @@ export function EditBudgetPage() {
         body: JSON.stringify({
           name: budgetName.trim(),
           ...inputs,
+          custoTotal: result.custoTotal,
+          precoVenda: result.precoVenda,
         }),
       });
       if (!res.ok) {
@@ -210,7 +218,7 @@ export function EditBudgetPage() {
     );
   }
 
-  if (error || !inputs || !result) {
+  if (error || !budget || !inputs || !result) {
     return (
       <div className="text-center py-20">
         <p className="text-white/40 mb-4">{error || 'Orçamento não encontrado.'}</p>
@@ -259,23 +267,22 @@ export function EditBudgetPage() {
       </div>
 
       {}
+      <PrintProfiles catalogue={catalogue} printerId={printerId} filamentId={filamentId} editing
+        onPrinter={(id, fields) => {
+          setPrinterId(id);
+          setInputs(previous => previous && ({ ...previous,
+            potenciaImpressora: budget.potenciaImpressora, precoImpressora: budget.precoImpressora,
+            vidaUtilHoras: budget.vidaUtilHoras, percentualManutencao: budget.percentualManutencao, ...fields }));
+        }}
+        onFilament={(id, fields) => {
+          setFilamentId(id);
+          setInputs(previous => previous && ({ ...previous,
+            precoRoloFilamento: budget.precoRoloFilamento, pesoRoloFilamento: budget.pesoRoloFilamento, ...fields }));
+        }} />
+
       <div className="space-y-4">
-        <FieldGroup icon={Package} title="Custo do Filamento (Material)">
+        <FieldGroup icon={Package} title="Material da Peça">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <NumericField
-              label="Preço do Rolo"
-              value={inputs.precoRoloFilamento}
-              onChange={(v) => updateField('precoRoloFilamento', v)}
-              suffix="R$"
-              tooltip="Preço de compra de um rolo de filamento"
-            />
-            <NumericField
-              label="Peso do Rolo"
-              value={inputs.pesoRoloFilamento}
-              onChange={(v) => updateField('pesoRoloFilamento', v)}
-              suffix="g"
-              tooltip="Peso total do rolo de filamento"
-            />
             <NumericField
               label="Peso da Peça"
               value={inputs.pesoPeca}
@@ -287,61 +294,7 @@ export function EditBudgetPage() {
         </FieldGroup>
 
         <FieldGroup icon={Clock} title="Tempo de Impressão">
-          <NumericField
-            label="Duração da Impressão"
-            value={inputs.tempoImpressao}
-            onChange={(v) => updateField('tempoImpressao', v)}
-            suffix="horas"
-            tooltip="Duração total da impressão"
-          />
-        </FieldGroup>
-
-        <FieldGroup icon={Zap} title="Custo de Energia Elétrica">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <NumericField
-              label="Potência da Impressora"
-              value={inputs.potenciaImpressora}
-              onChange={(v) => updateField('potenciaImpressora', v)}
-              suffix="W"
-              tooltip="Consumo médio de energia"
-            />
-            <NumericField
-              label="Tarifa de Energia"
-              value={inputs.tarifaEnergia}
-              onChange={(v) => updateField('tarifaEnergia', v)}
-              suffix="R$/kWh"
-              tooltip="Tarifa de energia elétrica"
-            />
-          </div>
-        </FieldGroup>
-
-        <FieldGroup icon={Cpu} title="Depreciação da Impressora">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <NumericField
-              label="Preço da Impressora"
-              value={inputs.precoImpressora}
-              onChange={(v) => updateField('precoImpressora', v)}
-              suffix="R$"
-              tooltip="Preço de compra da impressora 3D"
-            />
-            <NumericField
-              label="Vida Útil"
-              value={inputs.vidaUtilHoras}
-              onChange={(v) => updateField('vidaUtilHoras', v)}
-              suffix="horas"
-              tooltip="Vida útil estimada em horas"
-            />
-          </div>
-        </FieldGroup>
-
-        <FieldGroup icon={Wrench} title="Manutenção">
-          <NumericField
-            label="Percentual de Manutenção"
-            value={inputs.percentualManutencao}
-            onChange={(v) => updateField('percentualManutencao', v)}
-            suffix="%"
-            tooltip="Percentual sobre o custo-hora da máquina"
-          />
+          <PrintDuration value={inputs.tempoImpressao} onChange={hours => updateField('tempoImpressao', hours)} />
         </FieldGroup>
 
         <FieldGroup icon={AlertTriangle} title="Taxa de Falha / Retrabalho">

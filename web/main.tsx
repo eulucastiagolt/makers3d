@@ -1,3 +1,7 @@
+import { SettingsPage } from '@/components/dashboard/settings-page';
+import { FilamentsPage } from '@/components/dashboard/filaments-page';
+import { ChatPage } from '@/components/dashboard/chat-page';
+import { PrintersPage } from '@/components/dashboard/printers-page';
 import { createRoot } from 'react-dom/client';
 import { HardDriveDownload, Upload } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
@@ -18,7 +22,7 @@ function Backup() {
       const response = await fetch('/api/backup', { method: 'POST', body: await file.text() });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
-      toast.success(`${result.added} orçamento(s) importado(s).`);
+      toast.success(`${result.added} orçamento(s), ${result.printers} impressora(s) e ${result.filaments} filamento(s) importados.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Falha ao importar backup.');
     }
@@ -42,7 +46,7 @@ function Backup() {
   return <section className="space-y-6">
     <div>
       <h1 className="font-display text-2xl font-bold text-white">Backup e dados</h1>
-      <p className="mt-1 text-sm text-white/50">Seus orçamentos ficam neste computador. Importe um JSON para adicionar os registros ausentes.</p>
+      <p className="mt-1 text-sm text-white/50">Seus orçamentos, impressoras e filamentos ficam neste computador. Importe um JSON para adicionar os registros ausentes.</p>
     </div>
     <div className="flex flex-wrap gap-3 rounded-xl border border-white/10 bg-card p-5">
       <Button onClick={save}><HardDriveDownload className="mr-2 size-4" /> Exportar backup</Button>
@@ -67,6 +71,10 @@ const pages: Record<string, React.ComponentType> = {
   '/dashboard/marketplace/mercadolivre': MercadolivreCalculator,
   '/dashboard/marketplace/historico': MarketplaceHistory,
   '/backup': Backup,
+  '/configuracoes': SettingsPage,
+  '/chat': ChatPage,
+  '/impressoras': PrintersPage,
+  '/filamentos': FilamentsPage,
 };
 
 function App() {

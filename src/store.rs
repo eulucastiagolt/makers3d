@@ -1,4 +1,6 @@
 use crate::calc::{Kind, Options, calculate};
+use crate::filament::Filament;
+use crate::printer::Printer;
 use gtk4::glib;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -11,7 +13,7 @@ use std::{
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-const PRINT: &[&str] = &[
+pub(crate) const PRINT: &[&str] = &[
     "precoRoloFilamento",
     "pesoRoloFilamento",
     "pesoPeca",
@@ -27,7 +29,7 @@ const PRINT: &[&str] = &[
     "tempoPosProcessamento",
     "margemLucro",
 ];
-const MARKET: &[&str] = &[
+pub(crate) const MARKET: &[&str] = &[
     "productCost",
     "otherCosts",
     "taxPercentage",
@@ -67,10 +69,31 @@ struct LegacyBudget {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Settings {
+    pub electricity_rate: f64,
+}
+
+impl Settings {
+    pub fn validate(&self) -> Result<()> {
+        if !self.electricity_rate.is_finite() || self.electricity_rate < 0.0 {
+            return Err("Informe uma tarifa de energia válida, maior ou igual a zero.".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Store {
     version: u32,
     pub printing: Vec<Value>,
     pub marketplace: Vec<Value>,
+    #[serde(default)]
+    pub printers: Vec<Printer>,
+    #[serde(default)]
+    pub filaments: Vec<Filament>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settings: Option<Settings>,
 }
 
 impl Store {
@@ -97,6 +120,9 @@ impl Store {
                     version: 2,
                     printing: Vec::new(),
                     marketplace: Vec::new(),
+                    printers: Vec::new(),
+                    filaments: Vec::new(),
+                    settings: None,
                 })
             }
             Err(error) => Err(error.into()),
@@ -113,6 +139,9 @@ impl Store {
                     version: 2,
                     printing: Vec::new(),
                     marketplace: Vec::new(),
+                    printers: Vec::new(),
+                    filaments: Vec::new(),
+                    settings: None,
                 };
                 for record in records {
                     let print = record.kind == Kind::Print;
@@ -185,6 +214,31 @@ impl Store {
                 *row = normalized;
             }
         }
+        let mut printer_ids = HashSet::new();
+        for printer in &mut store.printers {
+            printer.validate()?;
+            if !glib::uuid_string_is_valid(&printer.id) || !printer_ids.insert(printer.id.clone()) {
+                return Err(
+                    "O backup contém impressoras com identificadores inválidos ou duplicados."
+                        .into(),
+                );
+            }
+        }
+        let mut filament_ids = HashSet::new();
+        for filament in &mut store.filaments {
+            filament.validate()?;
+            if !glib::uuid_string_is_valid(&filament.id)
+                || !filament_ids.insert(filament.id.clone())
+            {
+                return Err(
+                    "O backup contém filamentos com identificadores inválidos ou duplicados."
+                        .into(),
+                );
+            }
+        }
+        if let Some(settings) = &store.settings {
+            settings.validate()?;
+        }
         Ok(store)
     }
 
@@ -197,7 +251,10 @@ impl Store {
         Ok(())
     }
 
-    pub fn merge(&mut self, incoming: Self) -> usize {
+    pub fn merge(&mut self, incoming: Self) -> (usize, usize, usize) {
+        if self.settings.is_none() {
+            self.settings = incoming.settings;
+        }
         let mut added = 0;
         for (current, rows) in [
             (&mut self.printing, incoming.printing),
@@ -211,7 +268,32 @@ impl Store {
                 }
             }
         }
-        added
+        let mut ids: HashSet<_> = self
+            .printers
+            .iter()
+            .map(|printer| printer.id.clone())
+            .collect();
+        let before = self.printers.len();
+        self.printers.extend(
+            incoming
+                .printers
+                .into_iter()
+                .filter(|printer| ids.insert(printer.id.clone())),
+        );
+        let printers = self.printers.len() - before;
+        let mut ids: HashSet<_> = self
+            .filaments
+            .iter()
+            .map(|filament| filament.id.clone())
+            .collect();
+        let before = self.filaments.len();
+        self.filaments.extend(
+            incoming
+                .filaments
+                .into_iter()
+                .filter(|filament| ids.insert(filament.id.clone())),
+        );
+        (added, printers, self.filaments.len() - before)
     }
 }
 

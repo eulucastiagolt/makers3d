@@ -7,7 +7,8 @@ name="Makers3D-${arch}.AppImage"
 app_id=io.github.eulucastiagolt.Makers3D
 app_dir=$(mktemp -d)
 chmod 755 "$app_dir"
-trap 'rm -rf -- "$app_dir"' EXIT
+output_dir=
+trap 'rm -rf -- "$app_dir"; if [[ -n $output_dir ]]; then rm -rf -- "$output_dir"; fi' EXIT
 
 install -Dm755 data/AppRun "$app_dir/AppRun"
 if [[ -z ${MAKERS3D_BINARY:-} ]]; then
@@ -30,9 +31,17 @@ if [[ -n ${APPIMAGE_RUNTIME:-} ]]; then
 fi
 
 mkdir -p dist
-cd dist
-rm -f -- "$name.zsync"
-ARCH="$arch" appimagetool "${args[@]}" "$app_dir" "$name"
-if [[ -n ${UPDATE_INFORMATION:-} && ! -s $name.zsync ]]; then
-    zsyncmake -u "$name" -o "$name.zsync" "$name"
+output_dir=$(mktemp -d "$PWD/dist/.appimage.XXXXXX")
+(
+    cd "$output_dir"
+    ARCH="$arch" appimagetool "${args[@]}" "$app_dir" "$name"
+    if [[ -n ${UPDATE_INFORMATION:-} && ! -s $name.zsync ]]; then
+        zsyncmake -u "$name" -o "$name.zsync" "$name"
+    fi
+)
+mv -fT -- "$output_dir/$name" "dist/$name"
+if [[ -n ${UPDATE_INFORMATION:-} ]]; then
+    mv -fT -- "$output_dir/$name.zsync" "dist/$name.zsync"
+else
+    rm -f -- "dist/$name.zsync"
 fi

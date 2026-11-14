@@ -1,9 +1,42 @@
+mod agents;
 mod api;
 mod browser;
 mod calc;
+mod chat;
+mod chat_actions;
+mod chat_connection;
+mod chat_history;
+mod filament;
+mod login;
+mod printer;
 mod store;
 
 use gtk4::{self as gtk, gio, glib, prelude::*};
+
+fn install_titlebar(window: &gtk::ApplicationWindow) {
+    let display = gtk::prelude::WidgetExt::display(window);
+    let css = gtk::CssProvider::new();
+    css.load_from_data(include_str!("window.css"));
+    gtk::style_context_add_provider_for_display(
+        &display,
+        &css,
+        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
+
+    let titlebar = gtk::HeaderBar::builder()
+        .show_title_buttons(true)
+        .decoration_layout(":minimize,maximize,close")
+        .build();
+    titlebar.add_css_class("makers-titlebar");
+    titlebar.set_title_widget(Some(&gtk::Box::new(gtk::Orientation::Horizontal, 0)));
+
+    let brand = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    brand.add_css_class("makers-brand");
+    brand.append(&gtk::Image::from_icon_name("printer-symbolic"));
+    brand.append(&gtk::Label::new(Some("Makers 3D")));
+    titlebar.pack_start(&brand);
+    window.set_titlebar(Some(&titlebar));
+}
 
 fn main() -> glib::ExitCode {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
@@ -20,7 +53,10 @@ fn main() -> glib::ExitCode {
                     .to_owned()
                     .into());
             }
-            println!("{} orçamento(s) importado(s).", result["added"]);
+            println!(
+                "{} orçamento(s), {} impressora(s) e {} filamento(s) importados.",
+                result["added"], result["printers"], result["filaments"]
+            );
             Ok(())
         }) {
             Ok(()) => glib::ExitCode::SUCCESS,
@@ -45,6 +81,7 @@ fn main() -> glib::ExitCode {
             .default_width(1300)
             .default_height(850)
             .build();
+        install_titlebar(&window);
         match api::Api::open() {
             Ok(api) => window.set_child(Some(&browser::view(api))),
             Err(error) => {

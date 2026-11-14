@@ -1,9 +1,13 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { desktopApi } from '@/lib/desktop-api';
+import type { GeneralSettings } from './settings-page';
+import { PrintDuration } from './print-duration';
+import { PrintProfiles, usePrintProfiles } from './print-profiles';
 import {
-  Calculator, Package, Zap, Cpu, Wrench, AlertTriangle,
+  Calculator, Package, AlertTriangle,
   Clock, TrendingUp, Save, Loader2, DollarSign, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -100,6 +104,27 @@ export function CalculatorPage() {
   const [budgetName, setBudgetName] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const catalogue = usePrintProfiles();
+  const [printerId, setPrinterId] = useState('');
+  const [filamentId, setFilamentId] = useState('');
+  const ready = Boolean(printerId && filamentId);
+
+  const [rateStatus, setRateStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    desktopApi<GeneralSettings>('/api/settings', { signal: controller.signal })
+      .then(settings => {
+        if (controller.signal.aborted) return;
+        setInputs(previous => ({ ...previous, tarifaEnergia: settings.electricityRate }));
+        setRateStatus('ready');
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setRateStatus('error');
+      });
+    return () => controller.abort();
+  }, []);
+
   const result: CalculationResult = useMemo(() => calcularPreco(inputs), [inputs]);
 
   const updateField = (field: keyof CalculationInputs, value: number) => {
@@ -109,6 +134,7 @@ export function CalculatorPage() {
   const fmt = (v: number) => `R$ ${(v ?? 0)?.toFixed?.(2)?.replace?.('.', ',') ?? '0,00'}`;
 
   const handleSave = async () => {
+    if (!ready || rateStatus !== 'ready') return;
     if (!budgetName?.trim()) {
       toast.error('Dê um nome ao orçamento');
       return;
@@ -147,25 +173,21 @@ export function CalculatorPage() {
         <p className="text-sm text-white/40 mt-1">Calcule o custo real e o preço de venda ideal para cada peça.</p>
       </div>
 
+      <PrintProfiles catalogue={catalogue} printerId={printerId} filamentId={filamentId}
+        onPrinter={(id, fields) => {
+          setPrinterId(id);
+          setInputs(previous => ({ ...previous, ...fields }));
+        }}
+        onFilament={(id, fields) => {
+          setFilamentId(id);
+          setInputs(previous => ({ ...previous, ...fields }));
+        }} />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {}
         <div className="lg:col-span-2 space-y-5">
-          <FieldGroup icon={Package} title="Custo do Filamento (Material)" delay={0}>
+          <FieldGroup icon={Package} title="Material da Peça" delay={0}>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <NumericField
-                label="Preço do Rolo"
-                value={inputs?.precoRoloFilamento ?? 100}
-                onChange={(v: number) => updateField('precoRoloFilamento', v)}
-                suffix="R$"
-                tooltip="Preço de compra de um rolo de filamento. Referência PLA: ~R$100/kg"
-              />
-              <NumericField
-                label="Peso do Rolo"
-                value={inputs?.pesoRoloFilamento ?? 1000}
-                onChange={(v: number) => updateField('pesoRoloFilamento', v)}
-                suffix="g"
-                tooltip="Peso total do rolo de filamento. Padrão: 1000g (1kg)"
-              />
               <NumericField
                 label="Peso da Peça"
                 value={inputs?.pesoPeca ?? 20}
@@ -177,65 +199,7 @@ export function CalculatorPage() {
           </FieldGroup>
 
           <FieldGroup icon={Clock} title="Tempo de Impressão" delay={0.05}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <NumericField
-                label="Duração da Impressão"
-                value={inputs?.tempoImpressao ?? 2}
-                onChange={(v: number) => updateField('tempoImpressao', v)}
-                suffix="horas"
-                tooltip="Duração total da impressão, informada pelo slicer"
-              />
-            </div>
-          </FieldGroup>
-
-          <FieldGroup icon={Zap} title="Custo de Energia Elétrica" delay={0.1}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <NumericField
-                label="Potência da Impressora"
-                value={inputs?.potenciaImpressora ?? 300}
-                onChange={(v: number) => updateField('potenciaImpressora', v)}
-                suffix="W"
-                tooltip="Consumo médio de energia da impressora 3D. Média: ~300W"
-              />
-              <NumericField
-                label="Tarifa de Energia"
-                value={inputs?.tarifaEnergia ?? 1}
-                onChange={(v: number) => updateField('tarifaEnergia', v)}
-                suffix="R$/kWh"
-                tooltip="Tarifa de energia elétrica da sua concessão"
-              />
-            </div>
-          </FieldGroup>
-
-          <FieldGroup icon={Cpu} title="Depreciação da Impressora" delay={0.15}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <NumericField
-                label="Preço da Impressora"
-                value={inputs?.precoImpressora ?? 1500}
-                onChange={(v: number) => updateField('precoImpressora', v)}
-                suffix="R$"
-                tooltip="Preço de compra da impressora 3D"
-              />
-              <NumericField
-                label="Vida Útil"
-                value={inputs?.vidaUtilHoras ?? 4000}
-                onChange={(v: number) => updateField('vidaUtilHoras', v)}
-                suffix="horas"
-                tooltip="Vida útil estimada em horas de impressão. Conservador: 4000h"
-              />
-            </div>
-          </FieldGroup>
-
-          <FieldGroup icon={Wrench} title="Manutenção" delay={0.2}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <NumericField
-                label="Percentual de Manutenção"
-                value={inputs?.percentualManutencao ?? 10}
-                onChange={(v: number) => updateField('percentualManutencao', v)}
-                suffix="%"
-                tooltip="10% a 15% sobre o custo-hora da máquina para cobrir bicos, tubos PTFE, ventoinhas, etc."
-              />
-            </div>
+            <PrintDuration value={inputs.tempoImpressao} onChange={hours => updateField('tempoImpressao', hours)} />
           </FieldGroup>
 
           <FieldGroup icon={AlertTriangle} title="Taxa de Falha / Retrabalho" delay={0.25}>
@@ -290,12 +254,16 @@ export function CalculatorPage() {
         </div>
 
         {}
-        <div className="space-y-5">
+        {rateStatus !== 'ready' || !ready ? <p role="status" className="rounded-xl border border-white/10 bg-card p-5 text-sm text-white/70">
+          {rateStatus === 'error' ? 'Não foi possível carregar a tarifa de energia. Abra Configurações e tente novamente.'
+            : !ready ? 'Selecione uma impressora e um filamento para ver o resultado e salvar o orçamento.'
+            : 'Carregando tarifa de energia…'}
+        </p> : <div className="space-y-5">
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
-            className="sticky top-20 space-y-5"
+            className="sticky top-16 lg:top-4 space-y-5"
           >
             <div className="p-6 rounded-xl bg-gradient-to-br from-gold/10 via-transparent to-gold/5 border border-gold/15 space-y-4">
               <div className="flex items-center gap-2 mb-3">
@@ -356,7 +324,7 @@ export function CalculatorPage() {
               </Button>
             </div>
           </motion.div>
-        </div>
+        </div>}
       </div>
     </div>
   );

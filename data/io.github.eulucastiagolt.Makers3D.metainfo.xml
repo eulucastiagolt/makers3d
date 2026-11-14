@@ -5,4 +5,11 @@
   <summary>Orçamentos de impressão 3D e precificação para marketplaces</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <launchable type="desktop-id">io.github.eulucastiagolt.Makers3D.desktop</launchable>
+  <releases>
+    <release version="0.4.0" date="2026-11-14">
+      <description>
+        <p>Perfis de impressora e filamento, tarifa padrão de energia e chat com IA integrado aos orçamentos.</p>
+      </description>
+    </release>
+  </releases>
 </component>

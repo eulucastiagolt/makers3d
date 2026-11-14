@@ -52,6 +52,7 @@ pub struct Quote {
     pub profit: f64,
     pub details: Vec<(&'static str, f64)>,
     pub margin: Option<f64>,
+    pub market_fees: Option<[f64; 4]>,
 }
 
 fn round(value: f64) -> f64 {
@@ -86,6 +87,7 @@ fn print_quote(values: &[f64]) -> Quote {
         cost: round(cost),
         profit: round(price - cost),
         margin: None,
+        market_fees: None,
         details: vec![
             ("Filamento", round(filament)),
             ("Energia", round(energy)),
@@ -168,6 +170,7 @@ fn market_quote(kind: Kind, values: &[f64], options: Options) -> Result<Quote, &
         price,
         cost: round(base + fees),
         profit,
+        market_fees: Some([fees, commission, fixed, additional]),
         margin: Some(round(ratio(profit, price) * 100.0)),
         details: vec![
             ("Produto", values[0]),

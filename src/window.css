@@ -1,0 +1,46 @@
+headerbar.makers-titlebar,
+headerbar.makers-titlebar:backdrop {
+    min-height: 48px;
+    padding: 0 10px 0 16px;
+    background: #090909;
+    border-bottom: 1px solid #232323;
+    box-shadow: none;
+    color: #eee;
+}
+
+headerbar.makers-titlebar .makers-brand {
+    color: #ddad31;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+headerbar.makers-titlebar windowcontrols button,
+headerbar.makers-titlebar windowcontrols button:hover,
+headerbar.makers-titlebar windowcontrols button:active {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    min-width: 30px;
+    min-height: 30px;
+    margin: 0 2px;
+    padding: 0;
+    border-radius: 50%;
+}
+
+headerbar.makers-titlebar windowcontrols button > image {
+    color: #ccc;
+    background: #202020;
+    border-radius: 50%;
+}
+
+headerbar.makers-titlebar windowcontrols button:hover > image,
+headerbar.makers-titlebar windowcontrols button:active > image {
+    background: #343434;
+    color: #fff;
+}
+
+headerbar.makers-titlebar windowcontrols button.close:hover > image,
+headerbar.makers-titlebar windowcontrols button.close:active > image {
+    background: #9d3434;
+    color: #fff;
+}

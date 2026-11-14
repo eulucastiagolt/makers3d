@@ -61,3 +61,5 @@ Em **Chat com IA → Conexão → Agente instalado**, o Makers 3D procura CLIs c
 O Antigravity CLI usa a sessão iniciada com `agy` no terminal. O OpenCode usa o provedor e o modelo definidos na CLI. Gemini CLI e GitHub Copilot CLI aparecem na lista quando detectados.
 
 Em **Chat com IA → Histórico**, abra uma conversa para ler as mensagens ou continuar com a conexão que você escolher. As conversas concluídas são gravadas localmente na pasta `makers3d/conversas` do diretório de dados. Cada resposta usa o contexto recente da conversa aberta, limitado pelo tamanho da janela de contexto do chat. As conversas ficam fora do backup de orçamentos.
+
+Marque **Pesquisar na web** antes de enviar a mensagem. O aplicativo pesquisa a mensagem no Bing e inclui títulos, trechos e links no contexto da IA selecionada. Alterações nos cadastros continuam passando pela prévia do Makers 3D.

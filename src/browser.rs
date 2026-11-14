@@ -144,6 +144,7 @@ unsafe extern "C" fn request_handler(request: Pointer, data: Pointer) {
                         if matches!(
                             path.as_str(),
                             "/api/chat"
+                                | "/api/chat/title"
                                 | "/api/chat/account"
                                 | "/api/chat/models"
                                 | "/api/chat/agents"
@@ -168,6 +169,7 @@ unsafe extern "C" fn request_handler(request: Pointer, data: Pointer) {
                                 ("POST", "/api/chat") => {
                                     crate::chat::dispatch(&accounts, &body, context, &publish)
                                 }
+                                ("POST", "/api/chat/title") => crate::chat::title(&accounts, &body),
                                 ("GET", "/api/chat/agents") => (200, crate::agents::installed()),
                                 ("GET", "/api/chat/models") => accounts.models(),
                                 (_, "/api/chat/account") => accounts.dispatch(&method, &body),

@@ -66,7 +66,7 @@ fn run(mut command: Command, id: &str, messages: Value) -> Result<String, String
     let io_error = |_| "Não foi possível preparar a sessão local.";
     let mut input = tempfile::tempfile().map_err(io_error)?;
     let prompt = format!(
-        "Responda à última mensagem do usuário usando apenas o contexto da conversa. Proponha ações do Makers 3D apenas pelo formato informado.\n{messages}"
+        "Responda à última mensagem do usuário. Use os resultados de pesquisa fornecidos quando disponíveis e cite as fontes. Proponha ações do Makers 3D apenas pelo formato informado.\n{messages}"
     );
     if id == "agy" {
         serde_json::to_writer(

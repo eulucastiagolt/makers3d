@@ -6,6 +6,26 @@
   <metadata_license>CC0-1.0</metadata_license>
   <launchable type="desktop-id">io.github.eulucastiagolt.Makers3D.desktop</launchable>
   <releases>
+    <release version="0.7.0" date="2026-11-14">
+      <description>
+        <p>Pesquisa na web compartilhada por todos os provedores do chat.</p>
+      </description>
+    </release>
+    <release version="0.6.0" date="2026-11-14">
+      <description>
+        <p>Pesquisa na web no chat usando o Codex CLI.</p>
+      </description>
+    </release>
+    <release version="0.5.1" date="2026-11-14">
+      <description>
+        <p>Envio de mensagens com Enter e quebra de linha com Shift + Enter no chat.</p>
+      </description>
+    </release>
+    <release version="0.5.0" date="2026-11-14">
+      <description>
+        <p>Títulos automáticos para as conversas do chat com IA.</p>
+      </description>
+    </release>
     <release version="0.4.0" date="2026-11-14">
       <description>
         <p>Perfis de impressora e filamento, tarifa padrão de energia e chat com IA integrado aos orçamentos.</p>

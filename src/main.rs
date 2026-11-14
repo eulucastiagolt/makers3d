@@ -10,6 +10,7 @@ mod filament;
 mod login;
 mod printer;
 mod store;
+mod web_search;
 
 use gtk4::{self as gtk, gio, glib, prelude::*};
 

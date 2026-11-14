@@ -7,6 +7,8 @@ use std::{fs, io, path::Path};
 struct Conversation {
     id: String,
     title: String,
+    #[serde(default)]
+    generated_title: bool,
     updated_at: String,
     messages: Vec<Message>,
 }
@@ -44,6 +46,29 @@ pub fn dispatch(directory: &Path, method: &str, id: Option<&str>, body: &[u8]) -
             }
             Err(_) => (500, json!({"error": "Não foi possível abrir a conversa."})),
         },
+        ("PATCH", Some(id)) => {
+            let Ok(title) = serde_json::from_slice::<String>(body) else {
+                return (400, json!({"error": "Título inválido."}));
+            };
+            let title = title
+                .trim()
+                .trim_matches(['"', '“', '”', '`', '*', '#'])
+                .trim();
+            if title.is_empty() || title.contains(['\n', '\r']) || title.chars().count() > 80 {
+                return (400, json!({"error": "Título inválido."}));
+            }
+            let Ok(mut row) = read(&directory.join(format!("{id}.json"))) else {
+                return (404, json!({"error": "Conversa não encontrada."}));
+            };
+            if !row.generated_title {
+                row.title = title.to_owned();
+                row.generated_title = true;
+                if save(directory, &row).is_err() {
+                    return (500, json!({"error": "Não foi possível salvar o título."}));
+                }
+            }
+            (200, summary(&row))
+        }
         ("PUT", Some(id)) => {
             let Ok(messages) = serde_json::from_slice::<Vec<Message>>(body) else {
                 return (400, json!({"error": "Mensagens inválidas."}));
@@ -71,9 +96,17 @@ pub fn dispatch(directory: &Path, method: &str, id: Option<&str>, body: &[u8]) -
                 .split_whitespace()
                 .collect::<Vec<_>>()
                 .join(" ");
+            let (title, generated_title) = match read(&directory.join(format!("{id}.json"))) {
+                Ok(row) => (row.title, row.generated_title),
+                Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                    (title.chars().take(80).collect(), false)
+                }
+                Err(_) => return (500, json!({"error": "Não foi possível abrir a conversa."})),
+            };
             let row = Conversation {
                 id: id.to_owned(),
-                title: title.chars().take(80).collect(),
+                title,
+                generated_title,
                 updated_at: updated_at.to_string(),
                 messages,
             };
@@ -90,7 +123,7 @@ pub fn dispatch(directory: &Path, method: &str, id: Option<&str>, body: &[u8]) -
 }
 
 fn summary(row: &Conversation) -> Value {
-    json!({"id": row.id, "title": row.title, "updated_at": row.updated_at})
+    json!({"id": row.id, "title": row.title, "updated_at": row.updated_at, "generated_title": row.generated_title})
 }
 
 fn read(path: &Path) -> io::Result<Conversation> {
@@ -149,6 +182,18 @@ mod tests {
         assert_eq!(list[0]["title"], "Quanto custa o vaso?");
         assert!(list[0].get("messages").is_none());
         let (_, reopened) = dispatch(path, "GET", Some(&id), &[]);
+        assert_eq!(reopened["messages"], messages);
+        assert_eq!(
+            dispatch(path, "PATCH", Some(&id), br#""Custo do vaso""#).0,
+            200
+        );
+        assert_eq!(
+            dispatch(path, "PUT", Some(&id), messages.to_string().as_bytes()).0,
+            200
+        );
+        let (_, reopened) = dispatch(path, "GET", Some(&id), &[]);
+        assert_eq!(reopened["title"], "Custo do vaso");
+        assert_eq!(reopened["generated_title"], true);
         assert_eq!(reopened["messages"], messages);
         assert_eq!(dispatch(path, "GET", Some("../orcamentos"), &[]).0, 400);
     }

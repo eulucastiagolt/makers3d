@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev librsvg2-bin zsync
+          npm --prefix web ci
+          curl -fsSL https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -o /tmp/appimagetool
+          chmod +x /tmp/appimagetool
+          echo /tmp >> "$GITHUB_PATH"
+      - name: Check tag and sources
+        shell: bash
+        run: |
+          version=$(awk -F '"' '/^version = / {print $2; exit}' Cargo.toml)
+          test "$GITHUB_REF_NAME" = "v$version"
+          make check
+      - name: Build packages
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+          UPDATE_INFORMATION: gh-releases-zsync|eulucastiagolt|makers3d|latest|Makers3D-x86_64.AppImage.zsync
+        run: make dist
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Makers 3D ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.AppImage
+            dist/*.zsync
+            dist/SHA256SUMS

@@ -1,0 +1,9 @@
+dist/
+/target/
+/web/node_modules
+/web/dist
+*.backup.json
+.env*
+/.agents/
+/.codex/
+/.aws/

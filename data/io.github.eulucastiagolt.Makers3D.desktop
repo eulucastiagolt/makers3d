@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Makers 3D
+Comment=Orçamentos de impressão 3D e precificação para marketplaces
+Exec=makers3d
+Icon=io.github.eulucastiagolt.Makers3D
+Terminal=false
+Categories=Utility;Calculator;

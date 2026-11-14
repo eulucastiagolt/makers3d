@@ -208,10 +208,10 @@ fn choose_destination(download: glib::Object, filename: &str) {
     dialog.connect_response(move |dialog, response| {
         unsafe {
             if response == gtk::ResponseType::Accept
-                && let Some(file) = dialog.file()
+                && let Some(path) = dialog.file().and_then(|file| file.path())
             {
                 webkit_download_set_allow_overwrite(raw(&download), 1);
-                webkit_download_set_destination(raw(&download), file.uri().to_glib_none().0);
+                webkit_download_set_destination(raw(&download), path.to_glib_none().0);
             } else {
                 webkit_download_cancel(raw(&download));
             }
